@@ -4,7 +4,7 @@ import { createLogger } from '../../utils/logger.mjs'
 
 const logger = createLogger('auth')
 
-const jwksUrl = 'https://test-endpoint.auth0.com/.well-known/jwks.json'
+const jwksUrl = 'https://dev-ii6kr3ylqiw7d5ri.us.auth0.com/.well-known/jwks.json'
 
 export async function handler(event) {
   try {
@@ -45,9 +45,41 @@ export async function handler(event) {
 async function verifyToken(authHeader) {
   const token = getToken(authHeader)
   const jwt = jsonwebtoken.decode(token, { complete: true })
+  if (!jwt) {
+    throw new Error('Invalid token')
+  }
 
-  // TODO: Implement token verification
-  return undefined;
+  const { kid } = jwt.header
+
+  const jwksResponse = await Axios.get(jwksUrl)
+  const jwks = jwksResponse.data
+
+  const signingKey = jwks.keys.find((key) => key.kid === kid)
+  if (!signingKey) {
+    throw new Error('Signing key not found')
+  }
+
+  const publicKey = getPublicKey(signingKey)
+
+  return jsonwebtoken.verify(token, publicKey, { algorithms: ['RS256'] })
+}
+
+function getPublicKey(signingKey) {
+  if (signingKey.x5c && signingKey.x5c.length > 0) {
+    const cert = signingKey.x5c[0]
+    return `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----`
+  }
+
+  if (signingKey.n && signingKey.e) {
+    const key = {
+      kty: signingKey.kty,
+      n: signingKey.n,
+      e: signingKey.e
+    }
+    return jsonwebtoken.jwkToPem(key)
+  }
+
+  throw new Error('Invalid signing key format')
 }
 
 function getToken(authHeader) {

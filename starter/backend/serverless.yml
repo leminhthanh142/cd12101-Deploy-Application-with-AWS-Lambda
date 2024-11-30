@@ -1,23 +1,26 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: thanhle141
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: udacity-serverless-deployment
 service: serverless-todo-app
 
 plugins:
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
 
-frameworkVersion: '3'
-
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   tracing:
     lambda: true
     apiGateway: true
+  region: us-east-1
   stage: dev
   environment:
-    - stage: dev
-    - TODOS_TABLE: TodosTable
-    - S3_BUCKET: serverless-todo-app-bucket
-    - DYNAMODB_INDEX: TodoUserIndex
+    TODOS_TABLE: TodosTable
+    S3_BUCKET: serverless-todo-app-bucket
+    DYNAMODB_INDEX: TodoUserIndex
+    SIGNED_URL_EXPIRATION: 300
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -32,6 +35,7 @@ functions:
 
   GetTodos:
     handler: src/lambda/http/getTodos.handler
+    tracing: true
     events:
       - http:
           method: get
@@ -42,11 +46,13 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:Query
+          - dynamodb:GetItem
         Resource:
           - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
+    tracing: true
     events:
       - http:
           method: post
@@ -62,6 +68,7 @@ functions:
 
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
+    tracing: true
     events:
       - http:
           method: patch
@@ -77,6 +84,7 @@ functions:
 
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
+    tracing: true
     events:
       - http:
           method: delete
@@ -92,6 +100,7 @@ functions:
 
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
+    tracing: true
     events:
       - http:
           method: post
@@ -112,24 +121,38 @@ functions:
 
 resources:
   Resources:
+    RestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: ${self:provider.stage}-serverless-todo-app
+    GatewayResponse:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: MISSING_AUTHENTICATION_TOKEN
+        RestApiId: !Ref RestApi
+        StatusCode: '404'
     TodosTable:
       Type: AWS::DynamoDB::Table
       Properties:
+        TableName: ${self:provider.environment.TODOS_TABLE}
+        BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: todoId
             AttributeType: S
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: todoId
-            KeyType: HASH
           - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: todoId
             KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
     BucketCors:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${self.provider.environment.S3_BUCKET}
+        BucketName: ${self:provider.environment.S3_BUCKET}
         CorsConfiguration:
           CorsRules:
             - AllowedOrigins:
@@ -143,18 +166,3 @@ resources:
               AllowedHeaders:
                 - '*'
               MaxAge: 3000
-    BucketPolicy:
-      Type: AWS::S3::BucketPolicy
-      Properties:
-        Bucket: !Ref: AttachmentBucket
-        PolicyDocument:
-          Id: MyBucketPolicy
-          Version: '2012-10-17'
-          Statement:
-            - Sid: PublicRead
-              Effect: Allow
-              Principal: '*'    
-              Action: s3:GetObject    
-              Resource: 
-                - 'arn:aws:s3:::${self.provider.environment.S3_BUCKET}'
-                - 'arn:aws:s3:::${self.provider.environment.S3_BUCKET}/*'
