@@ -28,7 +28,7 @@ export function Todos() {
   function renderTodosList() {
     return (
       <Grid padded>
-        {todos.map((todo, pos) => {
+        {todos?.map((todo, pos) => {
           return (
             <Grid.Row key={todo.todoId}>
               <Grid.Column width={1} verticalAlign="middle">
@@ -133,6 +133,7 @@ export function Todos() {
         })
         console.log('Access token: ' + accessToken)
         const todos = await getTodos(accessToken)
+        
         setTodos(todos)
         setLoadingTodos(false)
       } catch (e) {
@@ -141,6 +142,7 @@ export function Todos() {
     }
     foo()
   }, [getAccessTokenSilently])
+  
 
   return (
     <div>

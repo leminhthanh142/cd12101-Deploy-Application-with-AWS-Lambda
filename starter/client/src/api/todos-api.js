@@ -13,7 +13,15 @@ export async function getTodos(idToken) {
     }
   )
   console.log('Todos:', response.data)
-  return response.data.items
+  return response.data.items.map((todo) => ({
+    todoId: todo.todoId.S,
+    name: todo.name.S,
+    dueDate: todo.dueDate.S,
+    done: todo.done.BOOL,
+    createdAt: todo.createdAt.S,
+    userId: todo.userId.S,
+    attachmentUrl: todo.attachmentUrl.S
+  }))
 }
 
 export async function createTodo(idToken, newTodo) {

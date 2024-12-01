@@ -16,7 +16,7 @@ export async function handler(event) {
     return {
       statusCode: 201,
       headers: corsHeaders,
-      body: JSON.stringify({ newTodo })
+      body: JSON.stringify({ item: newTodo })
     }
   } catch (e) {
     logger.error(`Error creating todo: ${e.message}`)

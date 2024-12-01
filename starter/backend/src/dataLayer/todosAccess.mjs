@@ -3,7 +3,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   UpdateCommand,
-  DeleteCommand,
+  DeleteCommand
 } from '@aws-sdk/lib-dynamodb'
 import AWSXRay from 'aws-xray-sdk-core'
 import { createLogger } from '../utils/logger.mjs'
@@ -24,7 +24,7 @@ export class TodoAccess {
       TableName: this.todosTable,
       KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: {
-        ':userId': userId
+        ':userId': { S: userId }
       }
     })
 
@@ -40,22 +40,20 @@ export class TodoAccess {
       Item: newTodo
     })
 
-    const res = await this.dynamoDBDocument.send(command)
-    return res
+    await this.dynamoDBDocument.send(command)
+    return newTodo
   }
 
-  async updateTodo({ userId, todoId, updateData }) {
-    logger.info('Updating todo item', { userId, todoId, updateData })
+  async updateTodo({ userId, todoId, updatedTodo }) {
+    logger.info('Updating todo item', { userId, todoId, updatedTodo })
 
     const command = new UpdateCommand({
       TableName: this.todosTable,
       Key: { userId, todoId },
       ConditionExpression: 'attribute_exists(todoId)',
-      UpdateExpression: 'set name = :name, dueDate = :dueDate, done = :done',
+      UpdateExpression: 'set done = :done',
       ExpressionAttributeValues: {
-        ':name': updateData.name,
-        ':dueDate': updateData.dueDate,
-        ':done': updateData.done
+        ':done': updatedTodo.done
       }
     })
 
@@ -73,8 +71,8 @@ export class TodoAccess {
     await this.dynamoDBDocument.send(command)
   }
 
-  async saveImgUrl({ userId, todoId, bucketName }) {
-    logger.info('Updating todo item image', { userId, todoId, bucketName })
+  async saveImgUrl({ userId, todoId, attachmentUrl }) {
+    logger.info('Updating todo item image', { userId, todoId, attachmentUrl })
 
     const command = new UpdateCommand({
       TableName: this.todosTable,
@@ -82,7 +80,7 @@ export class TodoAccess {
       ConditionExpression: 'attribute_exists(todoId)',
       UpdateExpression: 'set attachmentUrl = :attachmentUrl',
       ExpressionAttributeValues: {
-        ':attachmentUrl': `https://${bucketName}.s3.amazonaws.com/${todoId}`
+        ':attachmentUrl': attachmentUrl
       }
     })
 

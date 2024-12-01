@@ -14,7 +14,7 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ todos })
+      body: JSON.stringify({ items: todos })
     }
   } catch (e) {
     logger.error(`Error getting todos: ${e.message}`)
