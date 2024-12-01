@@ -24,7 +24,9 @@ export class TodoAccess {
       TableName: this.todosTable,
       KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: {
-        ':userId': { S: userId }
+        ':userId': {
+          "S": userId
+        }
       }
     })
 
